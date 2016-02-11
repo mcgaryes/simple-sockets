@@ -1,0 +1,9 @@
+{
+  "esversion": 6,
+  "strict": true,
+  "varstmt": true,
+  "node": true,
+  "quotmark": "single",
+  "undef": false,
+  "mocha": true
+}
