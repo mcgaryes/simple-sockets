@@ -8,11 +8,14 @@ const Socket = require('net').Socket;
 const log = require('./logger');
 
 
+
 class SocketClient
 {
     constructor(options)
     {
         this.socket = new Socket();
+        this.reconnect = options && options.reconnect ? options.reconnect : false;
+        this.reconnectAfter = options && options.reconnectAfter ? options.reconnectAfter : 5000;
         this.addEventListeners();
     }
 
@@ -22,10 +25,16 @@ class SocketClient
         this.socket.connect(this.port, onConnect);
     }
 
+    disconnect()
+    {
+        this.socket.destroy();
+    }
+
     addEventListeners()
     {
         this.socket.once('connect',() => {
             this.connected = true;
+            this.emit('connect');
         });
 
         this.socket.on('data', (buffer) => {
@@ -40,19 +49,26 @@ class SocketClient
         });
 
         this.socket.once('close', () => {
+            this.connected = false;
             this.emit('close');
             this.removeEventListeners();
-            setTimeout( () => {
-                this.connect();
-                this.addEventListeners();
-            },5000);
+            if (this.reconnect) {
+                setTimeout(() => {
+                    this.connect(this.port);
+                    this.addEventListeners();
+                }, this.reconnectAfter);
+            }
         });
 
     }
 
     removeEventListeners()
     {
-        this.socket.removeListener('data', this.handleEvent);
+        try {
+            this.socket.removeListener('data', this.handleEvent);
+        } catch (error) {
+            log.error(error);
+        }
     }
 
     send(event, data)
